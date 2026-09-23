@@ -1,6 +1,12 @@
-# Claude Desktop 中文补丁
+# Claude Desktop 中文增强版
 
 一个用于 Claude Desktop 的本地中文界面补丁，支持简体中文、繁体中文（中国台湾）和繁体中文（中国香港）。
+
+> 本增强版的简体中文资源合并了其他社区译文。代码保留原项目 MIT 许可；部分简体中文译文按 CC BY-NC-SA 4.0 分享。来源、改动及许可范围见 [TRANSLATION_LICENSE.md](TRANSLATION_LICENSE.md)，本地增强内容见 [LOCAL_CHANGES.md](LOCAL_CHANGES.md)。
+
+本仓库基于 [javaht/claude-desktop-zh-cn](https://github.com/javaht/claude-desktop-zh-cn)，针对 Windows Claude Desktop 2.7032.0.0 增强简体中文覆盖：补齐动态文案安装路径、补充在线界面词表，并保留嵌套界面结构及聊天内容。简体中文资源另参考 [ICERainbow666/claude-desktop-zh-cn](https://github.com/ICERainbow666/claude-desktop-zh-cn)。其余平台功能沿用上游，不表示已在本增强版中重新验证。
+
+发布检查：25 项自动化测试通过，JSON、PowerShell 和生成的 JavaScript 语法检查通过；未进行客户端界面测试。安装器的版本提示目前仍跟踪上游 Releases，不会自动下载或覆盖本增强版。
 
 macOS 双击 `install-mac.command`；Windows 双击 `install-windows.bat` 后按 UAC 提示授权；Linux（deb 包安装）在终端运行 `./install-linux.sh`。脚本会给 Claude Desktop 添加中文语言选项并安装中文界面资源。
 
@@ -41,7 +47,8 @@ macOS 双击 `install-mac.command`；Windows 双击 `install-windows.bat` 后按
 - 支持三种中文变体：`zh-CN`（简体中文）、`zh-TW`（繁体中文（中国台湾））、`zh-HK`（繁体中文（中国香港））。
 - 自动给 Claude 前端语言白名单加入当前选择的中文变体。
 - 完整/官方账号模式会修改 `app.asar`，对在线账号登录后的 `claude.ai` 页面做显示层 DOM 翻译；该逻辑只改界面文本和语言状态，不改第三方 API、网关、模型路由或请求内容。
-- macOS 和 Linux 会合并当前 Claude 版本的英文语言文件与随包中文翻译；新版本新增但暂未翻译的字段保留英文，避免界面缺失文本。
+- macOS、Linux 和 Windows 会合并当前 Claude 版本的英文语言文件与随包中文翻译；新版本新增但暂未翻译的字段保留英文，避免界面缺失文本。Windows 还会把动态文案安装到新版客户端使用的 ion-dist/i18n/dynamic 路径。
+- Windows 官方账号模式可通过 resources/online-dom-zh-CN.json 补充在线页面的固定界面文案；其中 uiOnly 用于短标签，只在按钮、导航、标题等界面元素上匹配，避免改写聊天内容。
 - macOS 完整补丁模式可绕过新版 Claude Desktop 对第三方网关模型名的本地 Anthropic 校验，避免 `deepseek-v4-pro` / `kimi-*` 等模型名导致配置整体失效；跳过结构性 `app.asar` 的模式不包含此功能。
 - Windows 安装脚本会备份并修改当前 Claude Desktop 的资源文件，卸载时从备份恢复。需要 Cowork 沙箱或截图工作区时应选择 Windows 模式 1。
 - Linux 安装脚本会备份并修改 deb 包安装目录下的资源文件和 `app.asar`，卸载时从备份恢复；Claude Desktop 升级后会识别版本变化并重新备份。
@@ -168,7 +175,7 @@ git pull
 - 查找 Windows 版 Claude Desktop 安装目录。
 - 安装前会先尝试从 `resources\.zh-cn-backups` 恢复旧备份，清理上一轮汉化；没有旧备份时跳过并继续安装。
 - 修改前只备份实际会改动的文件到 Claude 安装目录下的 `resources\.zh-cn-backups`；模式 1 不修改 `app.asar` 或 `Claude.exe`，模式 2 会备份并修改它们。
-- 复制本仓库现有中文资源，不使用其他语言包项目里的 JSON：
+- 安装本仓库随包提供的中文资源，简体中文的合并来源见上方许可说明：
   - `resources/frontend-zh-CN.json` / `frontend-zh-TW.json` / `frontend-zh-HK.json` -> `ion-dist\i18n\` 对应语言代码 `.json`
   - `resources/desktop-zh-CN.json` / `desktop-zh-TW.json` / `desktop-zh-HK.json` -> `resources\` 对应语言代码 `.json`
   - `resources/statsig-zh-CN.json` / `statsig-zh-TW.json` / `statsig-zh-HK.json` -> `ion-dist\i18n\statsig\` 对应语言代码 `.json`

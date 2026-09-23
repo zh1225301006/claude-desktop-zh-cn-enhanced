@@ -635,7 +635,19 @@ function Restore-LatestBackup {
         }
         $parent = Split-Path -Parent $target
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
-        Copy-Item $file.FullName $target -Force
+        # Windows can keep the executable locked briefly after the process exits.
+        for ($attempt = 1; $attempt -le 12; $attempt++) {
+            try {
+                Copy-Item $file.FullName $target -Force -ErrorAction Stop
+                break
+            } catch {
+                if (($attempt -eq 12) -or
+                    (-not $target.EndsWith("Claude.exe", [System.StringComparison]::OrdinalIgnoreCase))) {
+                    throw
+                }
+                Start-Sleep -Seconds 1
+            }
+        }
         Write-Host "  restored: $relative" -ForegroundColor Green
     }
 }
@@ -669,6 +681,7 @@ function Enable-WriteAccess {
         (Join-Path $ResourcesPath "ion-dist"),
         (Join-Path $ResourcesPath "ion-dist\i18n"),
         (Join-Path $ResourcesPath "ion-dist\i18n\statsig"),
+        (Join-Path $ResourcesPath "ion-dist\i18n\dynamic"),
         (Join-Path $ResourcesPath "ion-dist\assets"),
         (Join-Path $ResourcesPath "ion-dist\assets\v1")
     )
@@ -676,6 +689,42 @@ function Enable-WriteAccess {
     foreach ($path in $paths) {
         Grant-WriteAccess $path
     }
+}
+
+function Install-MergedLanguageFile {
+    param(
+        [string]$EnglishPath,
+        [string]$TranslationPath,
+        [string]$Destination
+    )
+
+    if (-not (Test-Path -LiteralPath $EnglishPath)) {
+        Copy-Item -LiteralPath $TranslationPath -Destination $Destination -Force
+        return
+    }
+
+    $english = Get-Content -LiteralPath $EnglishPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $translated = Get-Content -LiteralPath $TranslationPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $merged = [ordered]@{}
+    $translatedCount = 0
+    foreach ($property in $english.PSObject.Properties) {
+        $original = $property.Value
+        $candidateProperty = $translated.PSObject.Properties[$property.Name]
+        $value = $original
+        if ($candidateProperty -and $candidateProperty.Value -is [string] -and
+            -not [string]::IsNullOrWhiteSpace($candidateProperty.Value)) {
+            $candidate = [string]$candidateProperty.Value
+            $sourceTokens = @([regex]::Matches([string]$original, '\{[A-Za-z_][A-Za-z_0-9.]*\}') | ForEach-Object Value | Sort-Object -Unique)
+            $targetTokens = @([regex]::Matches($candidate, '\{[A-Za-z_][A-Za-z_0-9.]*\}') | ForEach-Object Value | Sort-Object -Unique)
+            if (($sourceTokens -join '|') -eq ($targetTokens -join '|')) {
+                $value = $candidate
+                if ($candidate -cne $original) { $translatedCount++ }
+            }
+        }
+        $merged[$property.Name] = $value
+    }
+    [System.IO.File]::WriteAllText($Destination, ($merged | ConvertTo-Json -Compress -Depth 100), $Utf8NoBom)
+    Write-Host "  merged $translatedCount/$($merged.Count) translated strings: $Destination" -ForegroundColor DarkGray
 }
 
 function Install-LanguageFiles {
@@ -687,17 +736,24 @@ function Install-LanguageFiles {
 
     $i18nDir = Join-Path $ResourcesPath "ion-dist\i18n"
     $statsigDir = Join-Path $i18nDir "statsig"
+    $dynamicDir = Join-Path $i18nDir "dynamic"
     New-Item -ItemType Directory -Path $i18nDir -Force | Out-Null
     New-Item -ItemType Directory -Path $statsigDir -Force | Out-Null
 
-    Copy-Item $Pack["Frontend"] (Join-Path $i18nDir "$Lang.json") -Force
+    Install-MergedLanguageFile (Join-Path $i18nDir "en-US.json") $Pack["Frontend"] (Join-Path $i18nDir "$Lang.json")
     Write-Host "  installed ion-dist/i18n/$Lang.json" -ForegroundColor Green
 
-    Copy-Item $Pack["Desktop"] (Join-Path $ResourcesPath "$Lang.json") -Force
+    Install-MergedLanguageFile (Join-Path $ResourcesPath "en-US.json") $Pack["Desktop"] (Join-Path $ResourcesPath "$Lang.json")
     Write-Host "  installed resources/$Lang.json" -ForegroundColor Green
 
     Copy-Item $Pack["Statsig"] (Join-Path $statsigDir "$Lang.json") -Force
     Write-Host "  installed ion-dist/i18n/statsig/$Lang.json" -ForegroundColor Green
+
+    $dynamicEnglish = Join-Path $dynamicDir "en-US.json"
+    if (Test-Path -LiteralPath $dynamicEnglish) {
+        Install-MergedLanguageFile $dynamicEnglish $Pack["Statsig"] (Join-Path $dynamicDir "$Lang.json")
+        Write-Host "  installed ion-dist/i18n/dynamic/$Lang.json" -ForegroundColor Green
+    }
 }
 
 function Align-4 {
@@ -1454,18 +1510,48 @@ function Get-OnlineTranslationMap {
         }
     }
 
+    $overridesPath = Join-Path (Split-Path -Parent $PSScriptRoot) "resources\online-dom-$Language.json"
+    if (Test-Path -LiteralPath $overridesPath) {
+        $overrides = Get-Content -LiteralPath $overridesPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        foreach ($pair in $overrides.global) {
+            if ($pair.Count -ne 2) { throw "Invalid online DOM translation: $overridesPath" }
+            if (Test-OnlineDomTranslationEntry ([string]$pair[0]) ([string]$pair[1])) {
+                $mapping[[string]$pair[0]] = [string]$pair[1]
+            }
+        }
+    }
+
     Write-Host "  prepared online DOM translation map: $($mapping.Count) strings" -ForegroundColor DarkGray
+    return $mapping
+}
+
+function Get-OnlineUiTranslationMap {
+    param([string]$Language)
+
+    $mapping = [ordered]@{}
+    $overridesPath = Join-Path (Split-Path -Parent $PSScriptRoot) "resources\online-dom-$Language.json"
+    if (Test-Path -LiteralPath $overridesPath) {
+        $overrides = Get-Content -LiteralPath $overridesPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        foreach ($pair in $overrides.uiOnly) {
+            if ($pair.Count -ne 2) { throw "Invalid online UI translation: $overridesPath" }
+            if (Test-OnlineDomTranslationEntry ([string]$pair[0]) ([string]$pair[1])) {
+                $mapping[[string]$pair[0]] = [string]$pair[1]
+            }
+        }
+    }
     return $mapping
 }
 
 function Get-OnlineDomTranslationScript {
     param(
         [string]$Language,
-        [object]$Mapping
+        [object]$Mapping,
+        [object]$UiMapping
     )
 
     Write-Host "  serializing online DOM translation script" -ForegroundColor DarkGray
     $mappingJson = $Mapping | ConvertTo-Json -Compress -Depth 100
+    $uiMappingJson = $UiMapping | ConvertTo-Json -Compress -Depth 100
     $languageJson = $Language | ConvertTo-Json -Compress
     if ($Language -eq "zh-CN") {
         $selectedText = "已选择 `$1 项"
@@ -1540,7 +1626,7 @@ function Get-OnlineDomTranslationScript {
     $addedMonthRulesJson = $addedMonthRuleParts -join ','
     $template = @'
 (()=>{try{
-const L=__LANGUAGE__,M=__MAPPING__,ST=__SELECTED_TEXT__,DST=__DELETE_SELECTED_TEXT__,UMI=__UPDATED_MINUTE_TEXT__,UH=__UPDATED_HOUR_TEXT__,UD=__UPDATED_DAY_TEXT__,UW=__UPDATED_WEEK_TEXT__,UMO=__UPDATED_MONTH_TEXT__,UY=__UPDATED_YEAR_TEXT__,AS=__AGO_SECOND__,AMN=__AGO_MINUTE__,AH=__AGO_HOUR__,ADY=__AGO_DAY__,AWK=__AGO_WEEK__,ADDMI=__ADDED_MINUTE__,ADDH=__ADDED_HOUR__,ADDD=__ADDED_DAY__,ADDW=__ADDED_WEEK__,ADDMO=__ADDED_MONTH__,ADDY=__ADDED_YEAR__;
+const L=__LANGUAGE__,M=__MAPPING__,U=__UI_MAPPING__,ST=__SELECTED_TEXT__,DST=__DELETE_SELECTED_TEXT__,UMI=__UPDATED_MINUTE_TEXT__,UH=__UPDATED_HOUR_TEXT__,UD=__UPDATED_DAY_TEXT__,UW=__UPDATED_WEEK_TEXT__,UMO=__UPDATED_MONTH_TEXT__,UY=__UPDATED_YEAR_TEXT__,AS=__AGO_SECOND__,AMN=__AGO_MINUTE__,AH=__AGO_HOUR__,ADY=__AGO_DAY__,AWK=__AGO_WEEK__,ADDMI=__ADDED_MINUTE__,ADDH=__ADDED_HOUR__,ADDD=__ADDED_DAY__,ADDW=__ADDED_WEEK__,ADDMO=__ADDED_MONTH__,ADDY=__ADDED_YEAR__;
 localStorage.setItem("spa:locale",L);
 document.documentElement&&document.documentElement.setAttribute("lang",L);
 const N=s=>(s||"").replace(/\s+/g," ").trim();
@@ -1580,20 +1666,21 @@ const G=[
 [/^added (\d+) months? ago$/,ADDMO],
 [/^added (\d+) years? ago$/,ADDY],
 __ADDED_MONTH_RULES__,
+[/^Show all (\d+)$/,"显示全部 $1 项"],
 [/^Mon$/,"周一"],[/^Tue$/,"周二"],[/^Wed$/,"周三"],[/^Thu$/,"周四"],[/^Fri$/,"周五"],[/^Sat$/,"周六"],[/^Sun$/,"周日"]
 ];
-const R=s=>{const n=N(s);if(M[n])return M[n];for(const [r,t] of G){const m=n.match(r);if(m)return t.replace("$1",m[1])}};
+const R=(s,e,a=false)=>{const n=N(s);if(M[n])return M[n];if(U[n]&&(a||e&&e.closest('button,[role="button"],nav,[role="tab"],[role="menuitem"],[role="option"],h1,h2,h3')))return U[n];if(a){const m=n.match(/^More options for (.+)$/);if(m)return "“"+m[1]+"”的更多选项"}for(const [r,t] of G){const m=n.match(r);if(m)return t.replace("$1",m[1])}};
 const X=new Set(["SCRIPT","STYLE","NOSCRIPT"]),C="pre,code,kbd,samp,var,[data-language],[data-testid*=code],.cm-editor,.monaco-editor,.hljs",P='[data-testid="user-message"],.standard-markdown,.progressive-markdown,[data-testid="chat-input"],[data-testid="conway-composer-input"],[data-testid="conway-user-message"] .user-bubble,[data-testid="conway-output-cell"]';
 const SL=/^\/?[a-z][a-z0-9_]*(?:-[a-z0-9_]+)+(?:\s*(?:Custom command|Slash command))?$/i;
 function K(n){let e=n.nodeType===1?n:n.parentElement;for(let i=0;e&&i<5;e=e.parentElement,i++){const t=N(e.textContent);if(SL.test(t))return true;if(/\s/.test(t))break}return false}
 function Q(n){const e=n.nodeType===1?n:n.parentElement;return !!(e&&e.closest(P))}
 function H(n){return Q(n)||!!(n&&n.nodeType===1&&n.querySelector(P))}
-function T(){try{const b=document.body||document.documentElement;if(!b)return;const w=document.createTreeWalker(b,NodeFilter.SHOW_TEXT,{acceptNode(n){const p=n.parentElement;if(!p||X.has(p.tagName)||p.closest('[contenteditable],'+C)||Q(n)||K(n)||!R(n.nodeValue))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});let n;while(n=w.nextNode()){const v=R(n.nodeValue);if(v)n.nodeValue=v}document.querySelectorAll("[role=dialog] p,[role=dialog] div,[role=dialog] span").forEach(e=>{try{if(e.closest("button,[contenteditable],"+C)||H(e)||K(e))return;const t=R(e.textContent);if(t&&N(e.textContent)!==N(t))e.textContent=t}catch{}});document.querySelectorAll("[aria-label],[title],[placeholder],input,textarea").forEach(e=>{["aria-label","title","placeholder","value"].forEach(a=>{try{if(e.closest(C)||Q(e)||K(e))return;if(a==="value"&&!(e.matches("input[type=button],input[type=submit]")))return;let v=e.getAttribute?e.getAttribute(a):void 0;if(v==null&&a in e)v=e[a];const t=R(v);if(t){if(e.setAttribute)e.setAttribute(a,t);try{if(a in e)e[a]=t}catch{}}}catch{}})});document.querySelectorAll("a").forEach(e=>{try{if(H(e))return;const r=e.getBoundingClientRect(),txt=N(e.textContent);if(txt==="Claude"&&r.left<100&&r.top<100)e.style.visibility="hidden"}catch{}})}catch{}}
+function T(){try{const b=document.body||document.documentElement;if(!b)return;const w=document.createTreeWalker(b,NodeFilter.SHOW_TEXT,{acceptNode(n){const p=n.parentElement;if(!p||X.has(p.tagName)||p.closest('[contenteditable],'+C)||Q(n)||K(n)||!R(n.nodeValue,p))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});let n;while(n=w.nextNode()){const v=R(n.nodeValue,n.parentElement);if(v)n.nodeValue=v}document.querySelectorAll("[role=dialog] p,[role=dialog] div,[role=dialog] span").forEach(e=>{try{if(e.closest("button,[contenteditable],"+C)||H(e)||K(e)||e.children.length)return;const t=R(e.textContent,e);if(t&&N(e.textContent)!==N(t))e.textContent=t}catch{}});document.querySelectorAll("[aria-label],[title],[placeholder],input,textarea").forEach(e=>{["aria-label","title","placeholder","value"].forEach(a=>{try{if(e.closest(C)||Q(e)||K(e))return;if(a==="value"&&!(e.matches("input[type=button],input[type=submit]")))return;let v=e.getAttribute?e.getAttribute(a):void 0;if(v==null&&a in e)v=e[a];const t=R(v,e,true);if(t){if(e.setAttribute)e.setAttribute(a,t);try{if(a in e)e[a]=t}catch{}}}catch{}})});document.querySelectorAll("a").forEach(e=>{try{if(H(e))return;const r=e.getBoundingClientRect(),txt=N(e.textContent);if(txt==="Claude"&&r.left<100&&r.top<100)e.style.visibility="hidden"}catch{}})}catch{}}
 T();
 new MutationObserver(()=>{clearTimeout(window.__claudeZhDomTimer);window.__claudeZhDomTimer=setTimeout(T,30)}).observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true});
 }catch(e){}})()
 '@
-    return $template.Replace("__LANGUAGE__", $languageJson).Replace("__MAPPING__", $mappingJson).Replace("__SELECTED_TEXT__", $selectedTextJson).Replace("__DELETE_SELECTED_TEXT__", $deleteSelectedTextJson).Replace("__UPDATED_MINUTE_TEXT__", $updatedMinuteTextJson).Replace("__UPDATED_HOUR_TEXT__", $updatedHourTextJson).Replace("__UPDATED_DAY_TEXT__", $updatedDayTextJson).Replace("__UPDATED_WEEK_TEXT__", $updatedWeekTextJson).Replace("__UPDATED_MONTH_TEXT__", $updatedMonthTextJson).Replace("__UPDATED_YEAR_TEXT__", $updatedYearTextJson).Replace("__AGO_SECOND__", $agoSecondTextJson).Replace("__AGO_MINUTE__", $agoMinuteTextJson).Replace("__AGO_HOUR__", $agoHourTextJson).Replace("__AGO_DAY__", $agoDayTextJson).Replace("__AGO_WEEK__", $agoWeekTextJson).Replace("__ADDED_MINUTE__", $addedMinuteTextJson).Replace("__ADDED_HOUR__", $addedHourTextJson).Replace("__ADDED_DAY__", $addedDayTextJson).Replace("__ADDED_WEEK__", $addedWeekTextJson).Replace("__ADDED_MONTH__", $addedMonthTextJson).Replace("__ADDED_YEAR__", $addedYearTextJson).Replace("__ADDED_MONTH_RULES__", $addedMonthRulesJson)
+    return $template.Replace("__LANGUAGE__", $languageJson).Replace("__MAPPING__", $mappingJson).Replace("__UI_MAPPING__", $uiMappingJson).Replace("__SELECTED_TEXT__", $selectedTextJson).Replace("__DELETE_SELECTED_TEXT__", $deleteSelectedTextJson).Replace("__UPDATED_MINUTE_TEXT__", $updatedMinuteTextJson).Replace("__UPDATED_HOUR_TEXT__", $updatedHourTextJson).Replace("__UPDATED_DAY_TEXT__", $updatedDayTextJson).Replace("__UPDATED_WEEK_TEXT__", $updatedWeekTextJson).Replace("__UPDATED_MONTH_TEXT__", $updatedMonthTextJson).Replace("__UPDATED_YEAR_TEXT__", $updatedYearTextJson).Replace("__AGO_SECOND__", $agoSecondTextJson).Replace("__AGO_MINUTE__", $agoMinuteTextJson).Replace("__AGO_HOUR__", $agoHourTextJson).Replace("__AGO_DAY__", $agoDayTextJson).Replace("__AGO_WEEK__", $agoWeekTextJson).Replace("__ADDED_MINUTE__", $addedMinuteTextJson).Replace("__ADDED_HOUR__", $addedHourTextJson).Replace("__ADDED_DAY__", $addedDayTextJson).Replace("__ADDED_WEEK__", $addedWeekTextJson).Replace("__ADDED_MONTH__", $addedMonthTextJson).Replace("__ADDED_YEAR__", $addedYearTextJson).Replace("__ADDED_MONTH_RULES__", $addedMonthRulesJson)
 }
 
 function Remove-ExistingOnlineDomTranslationPatch {
@@ -2050,7 +2137,8 @@ function Patch-OnlineDomTranslation {
     }
 
     $mapping = Get-OnlineTranslationMap $ResourcesPath $Pack $Language
-    $script = Get-OnlineDomTranslationScript $Language $mapping
+    $uiMapping = Get-OnlineUiTranslationMap $Language
+    $script = Get-OnlineDomTranslationScript $Language $mapping $uiMapping
     $scriptLiteral = $script | ConvertTo-Json -Compress
 
     Write-Host "  locating online DOM translation injection point" -ForegroundColor DarkGray
@@ -3709,12 +3797,15 @@ function Remove-LanguageFiles {
         (Join-Path $ResourcesPath "ion-dist\i18n\zh-CN.json"),
         (Join-Path $ResourcesPath "zh-CN.json"),
         (Join-Path $ResourcesPath "ion-dist\i18n\statsig\zh-CN.json"),
+        (Join-Path $ResourcesPath "ion-dist\i18n\dynamic\zh-CN.json"),
         (Join-Path $ResourcesPath "ion-dist\i18n\zh-TW.json"),
         (Join-Path $ResourcesPath "zh-TW.json"),
         (Join-Path $ResourcesPath "ion-dist\i18n\statsig\zh-TW.json"),
+        (Join-Path $ResourcesPath "ion-dist\i18n\dynamic\zh-TW.json"),
         (Join-Path $ResourcesPath "ion-dist\i18n\zh-HK.json"),
         (Join-Path $ResourcesPath "zh-HK.json"),
-        (Join-Path $ResourcesPath "ion-dist\i18n\statsig\zh-HK.json")
+        (Join-Path $ResourcesPath "ion-dist\i18n\statsig\zh-HK.json"),
+        (Join-Path $ResourcesPath "ion-dist\i18n\dynamic\zh-HK.json")
     )
 
     foreach ($target in $targets) {

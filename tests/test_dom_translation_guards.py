@@ -70,6 +70,7 @@ def materialize_windows_dom_script(template: str) -> str:
     values = {
         "__LANGUAGE__": "zh-CN",
         "__MAPPING__": {"Settings": "设置", "deploy-command": "部署命令"},
+        "__UI_MAPPING__": {"Save": "保存"},
         "__SELECTED_TEXT__": "已选择 $1 项",
         "__DELETE_SELECTED_TEXT__": "删除 $1 个所选项目",
         "__UPDATED_MINUTE_TEXT__": "$1 分钟前更新",
@@ -224,9 +225,13 @@ const codeOwner = body.append(textElement('Settings', ['code'], 'CODE'));
 const editableOwner = body.append(textElement('Settings', ['[contenteditable]']))
 const slashOwner = body.append(textElement('deploy-command'));
 const ordinaryUi = body.append(textElement('Settings'));
+const uiOnlyButton = body.append(textElement('Save', [], 'BUTTON'));
+const uiOnlyPlainText = body.append(textElement('Save'));
+const uiOnlyChat = body.append(new Element('DIV', ['[data-testid="user-message"]']));
+const uiOnlyChatButton = uiOnlyChat.append(textElement('Save', [], 'BUTTON'));
 
 const ordinaryDialog = new Element('DIV');
-ordinaryDialog.append(textElement('Set', [], 'SPAN'));
+const ordinaryDialogChild = ordinaryDialog.append(textElement('Set', [], 'SPAN'));
 ordinaryDialog.append(textElement('tings', [], 'SPAN'));
 body.append(ordinaryDialog);
 
@@ -305,8 +310,13 @@ const result = {
   contenteditable: editableOwner.textContent,
   slash: slashOwner.textContent,
   ordinaryUi: ordinaryUi.textContent,
+  uiOnlyButton: uiOnlyButton.textContent,
+  uiOnlyPlainText: uiOnlyPlainText.textContent,
+  uiOnlyChatButton: uiOnlyChatButton.textContent,
   ordinaryDialog: ordinaryDialog.textContent,
   ordinaryDialogOverwritten: ordinaryDialog.overwritten,
+  ordinaryDialogChildren: ordinaryDialog.children.length,
+  ordinaryDialogChildPreserved: ordinaryDialog.children[0] === ordinaryDialogChild,
   protectedDialog: protectedDialog.textContent,
   protectedDialogOverwritten: protectedDialog.overwritten,
   protectedDialogChildren: protectedDialog.children.length,
@@ -325,6 +335,7 @@ def run_dom_fixture(script: str) -> dict:
         ["node"],
         input=DOM_FIXTURE_PREFIX + "\n" + script + "\n" + DOM_FIXTURE_SUFFIX,
         text=True,
+        encoding="utf-8",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
@@ -414,8 +425,6 @@ class DomTranslationGuardTests(unittest.TestCase):
         self.assertEqual(result["slash"], "deploy-command")
         self.assertEqual(result["ordinaryUi"], "设置")
 
-        self.assertEqual(result["ordinaryDialog"], "设置")
-        self.assertTrue(result["ordinaryDialogOverwritten"])
         self.assertEqual(result["protectedDialog"], "Settings")
         self.assertFalse(result["protectedDialogOverwritten"])
         self.assertEqual(result["protectedDialogChildren"], 2)
@@ -425,12 +434,26 @@ class DomTranslationGuardTests(unittest.TestCase):
         self.assertEqual(result["protectedAttribute"], "Settings")
         self.assertEqual(result["ordinaryAnchorHidden"], "hidden")
         self.assertIsNone(result["protectedAnchorHidden"])
+        return result
 
     def test_python_generated_script_preserves_protected_dom_content(self):
-        self.assert_behavior_fixture(self.python_script)
+        result = self.assert_behavior_fixture(self.python_script)
+        self.assertEqual(result["ordinaryDialog"], "设置")
+        self.assertTrue(result["ordinaryDialogOverwritten"])
 
     def test_windows_generated_script_preserves_protected_dom_content(self):
-        self.assert_behavior_fixture(self.materialized_windows_script)
+        result = self.assert_behavior_fixture(self.materialized_windows_script)
+        # Windows preserves nested elements instead of replacing their container.
+        self.assertEqual(result["ordinaryDialog"], "Settings")
+        self.assertFalse(result["ordinaryDialogOverwritten"])
+        self.assertEqual(result["ordinaryDialogChildren"], 2)
+        self.assertTrue(result["ordinaryDialogChildPreserved"])
+
+    def test_windows_ui_only_labels_translate_controls_but_preserve_chat(self):
+        result = run_dom_fixture(self.materialized_windows_script)
+        self.assertEqual(result["uiOnlyButton"], "保存")
+        self.assertEqual(result["uiOnlyPlainText"], "Save")
+        self.assertEqual(result["uiOnlyChatButton"], "Save")
 
 
 if __name__ == "__main__":
