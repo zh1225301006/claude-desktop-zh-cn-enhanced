@@ -417,8 +417,8 @@
     .safety-bar b { color: var(--jade); font-weight: 700; }
     @media (max-width: 760px) { .install-grid { grid-template-columns: 1fr; } }
 
-    /* ── 反馈 + 社区 ─────────────────────── */
-    .feedback-grid { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 22px; align-items: stretch; }
+    /* ── 反馈 ────────────────────────────── */
+    .feedback-grid { display: grid; grid-template-columns: 1fr; gap: 22px; align-items: stretch; }
     .panel {
       background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 30px;
     }
@@ -429,15 +429,6 @@
     .checklist li b { font-family: var(--mono); color: var(--seal); font-size: 12px; }
     .checklist li span { color: var(--ink-2); }
     .checklist li span em { color: var(--ink); font-style: normal; font-weight: 600; }
-    .community { display: flex; flex-direction: column; align-items: center; text-align: center; }
-    .community img {
-      width: 188px; height: 188px; object-fit: contain; border-radius: 12px;
-      border: 1px solid var(--rule); background: #fff; padding: 6px;
-    }
-    .community b { margin-top: 16px; font-family: var(--display); font-weight: 700; font-size: 17px; }
-    .community p { margin: 6px 0 0; font-size: 13px; color: var(--ink-3); line-height: 1.55; }
-    .community a { color: var(--seal-deep); border-bottom: 1px solid rgba(207,58,34,0.3); }
-    @media (max-width: 760px) { .feedback-grid { grid-template-columns: 1fr; } }
 
     /* ── 终幕 CTA ────────────────────────── */
     .finale {
@@ -745,7 +736,7 @@
       </div>
     </section>
 
-    <!-- 反馈 + 社区 -->
+    <!-- 反馈 -->
     <section class="section" id="feedback">
       <header class="shead">
         <span class="shead-no" aria-hidden="true">04</span>
@@ -765,12 +756,6 @@
             <li><b>04</b><span><em>期望译法</em> —— 有更顺的中文，直接写出来。</span></li>
           </ul>
           <a class="btn btn-primary btn-sm" href="https://github.com/javaht/claude-desktop-zh-cn/issues/new">提交漏翻 Issue <span class="arrow">→</span></a>
-        </article>
-
-        <article class="panel community" data-reveal style="--delay:80ms">
-          <img src="images/wechat-group.png" alt="Claude Desktop 中文交流群二维码">
-          <b>扫码加入交流群</b>
-          <p>使用、第三方 API 配置或漏翻问题，都能在群里聊。<br>第三方 API 可参考 <a href="https://linux.do/t/topic/2032192" target="_blank" rel="noopener">这篇教程</a>。</p>
         </article>
       </div>
     </section>

@@ -127,8 +127,8 @@ Test-GitHubReleaseUpdate
 function Read-InteractiveSelection {
     Write-Host "=== Claude Desktop Windows 中文补丁 ==="
     Write-Host ""
-    Write-Host "[1] 安装中文补丁(第三方API登陆模式(例DeepSeek)：（Cowork 沙箱/工作区不可用(看群公告))"
-    Write-Host "[2] 安装中文补丁(官方账号登录模式：Cowork 沙箱/工作区不可用(看群公告))"
+    Write-Host "[1] 安装中文补丁(第三方API登陆模式(例DeepSeek)：（Cowork 沙箱/工作区不可用)"
+    Write-Host "[2] 安装中文补丁(官方账号登录模式：Cowork 沙箱/工作区不可用)"
     Write-Host "[3] Frida 运行时汉化（实验中，有问题请反馈，不保证成功）"
     Write-Host "[4] 恢复原样 / 卸载补丁"
     Write-Host "[5] 自动更新设置（y=禁止自动更新，n=允许自动更新）"
