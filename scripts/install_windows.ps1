@@ -1656,6 +1656,7 @@ const G=[
 [/^Updated (\d+) years? ago$/,UY],
 [/^(\d+)s ago$/,AS],
 [/^(\d+)m ago$/,AMN],
+[/^(\d+) seconds? ago$/,AS],[/^(\d+) minutes? ago$/,AMN],[/^(\d+) hours? ago$/,AH],[/^(\d+) days? ago$/,ADY],[/^(\d+) weeks? ago$/,AWK],
 [/^(\d+)h ago$/,AH],
 [/^(\d+)d ago$/,ADY],
 [/^(\d+)w ago$/,AWK],
@@ -1667,17 +1668,26 @@ const G=[
 [/^added (\d+) years? ago$/,ADDY],
 __ADDED_MONTH_RULES__,
 [/^Show all (\d+)$/,"显示全部 $1 项"],
+[/^What[’']s up next, (.+)\?$/,"$1，接下来做什么？"],
+[/^Fresh week\. ([\d.]+)% of your weekly limit used\.$/,"新的一周，本周额度已使用 $1%。"],
+[/^([\d.]+)% used$/,"已使用 $1%"],
+[/^Up to ([\d.]+)% off$/,"最高优惠 $1%"],
+[/^You[’']ve used ~([\d.]+)× more tokens than (.+)\.$/,"你使用的 Token 数约为《$2》的 $1 倍。"],
+[/^You[’']ve been granted a (\$[\d,.]+) bonus credit for cloud sessions, on top of your plan limits$/,"除套餐额度外，你还获赠了 $1 的云端会话额外额度"],
+[/^Resets (Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sun|Mon|Tue|Wed|Thu|Fri|Sat) (\d{1,2}:\d{2}) (AM|PM)$/, (day,time,period)=>"于 "+({Sunday:"周日",Monday:"周一",Tuesday:"周二",Wednesday:"周三",Thursday:"周四",Friday:"周五",Saturday:"周六",Sun:"周日",Mon:"周一",Tue:"周二",Wed:"周三",Thu:"周四",Fri:"周五",Sat:"周六"}[day])+" "+((Number(time.split(":")[0])%12)+(period==="PM"?12:0))+":"+time.split(":")[1]+" 重置"],
+[/^(\d{1,2}) (AM|PM)$/, (hour,period)=>((Number(hour)%12)+(period==="PM"?12:0))+" 时"],
 [/^Mon$/,"周一"],[/^Tue$/,"周二"],[/^Wed$/,"周三"],[/^Thu$/,"周四"],[/^Fri$/,"周五"],[/^Sat$/,"周六"],[/^Sun$/,"周日"]
 ];
-const R=(s,e,a=false)=>{const n=N(s);if(M[n])return M[n];if(U[n]&&(a||e&&e.closest('button,[role="button"],nav,[role="tab"],[role="menuitem"],[role="option"],h1,h2,h3')))return U[n];if(a){const m=n.match(/^More options for (.+)$/);if(m)return "“"+m[1]+"”的更多选项"}for(const [r,t] of G){const m=n.match(r);if(m)return t.replace("$1",m[1])}};
-const X=new Set(["SCRIPT","STYLE","NOSCRIPT"]),C="pre,code,kbd,samp,var,[data-language],[data-testid*=code],.cm-editor,.monaco-editor,.hljs",P='[data-testid="user-message"],.standard-markdown,.progressive-markdown,[data-testid="chat-input"],[data-testid="conway-composer-input"],[data-testid="conway-user-message"] .user-bubble,[data-testid="conway-output-cell"]';
+const R=(s,e,a=false)=>{const n=N(s);if(M[n])return M[n];if(U[n]&&(a||e&&e.closest('button,[role="button"],nav,[role="tab"],[role="menuitem"],[role="option"],label,[role="heading"],[role="switch"],[role="combobox"],[role="radio"],[id^="setting-"],[role="dialog"],h1,h2,h3')))return U[n];if(a){let m=n.match(/^More options for (.+)$/);if(m)return "“"+m[1]+"”的更多选项";m=n.match(/^Model: (.+)$/);if(m)return "模型："+m[1];m=n.match(/^Effort: (Low|Medium|High|Max)$/);if(m)return "思考强度："+({Low:"低",Medium:"中",High:"高",Max:"最高"}[m[1]]);m=n.match(/^New session in (.+)$/);if(m)return "在“"+(m[1]==="No folder"?"无文件夹":m[1])+"”中新建会话";m=n.match(/^Sort by (.+)$/);if(m)return "排序方式："+(M[m[1]]||U[m[1]]||m[1]);m=n.match(/^Actions for (.+)$/);if(m)return "“"+m[1]+"”的操作";m=n.match(/^View (.+)$/);if(m)return "查看 "+m[1];m=n.match(/^More actions for (.+)$/);if(m)return "“"+m[1]+"”的更多操作";m=n.match(/^Revoke access for (.+) connected (.+)$/);if(m)return "撤销 "+m[1]+" 的访问权限（连接时间："+m[2]+"）";m=n.match(/^Session actions for (.+)$/);if(m)return "会话操作："+m[1];m=n.match(/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) (disabled|enabled)$/);if(m)return ({Sun:"周日",Mon:"周一",Tue:"周二",Wed:"周三",Thu:"周四",Fri:"周五",Sat:"周六"}[m[1]])+"（"+(m[2]==="disabled"?"未启用":"已启用")+"）";m=n.match(/^(Hours|Minutes): None$/);if(m)return (m[1]==="Hours"?"小时":"分钟")+"：未设置";}for(const [r,t] of G){const m=n.match(r);if(m)return typeof t==="function"?t(...m.slice(1)):t.replace(/\$(\d+)/g,(_,i)=>m[Number(i)]||"")}};
+const X=new Set(["SCRIPT","STYLE","NOSCRIPT"]),C="pre,code,kbd,samp,var,[data-language],[data-testid*=code-block],[data-testid*=codeblock],.cm-editor,.monaco-editor,.hljs",P='[data-testid="user-message"],.standard-markdown,.progressive-markdown,[data-testid="chat-input"],[data-testid="conway-composer-input"],[data-testid="conway-user-message"] .user-bubble,[data-testid="conway-output-cell"]';
 const SL=/^\/?[a-z][a-z0-9_]*(?:-[a-z0-9_]+)+(?:\s*(?:Custom command|Slash command))?$/i;
 function K(n){let e=n.nodeType===1?n:n.parentElement;for(let i=0;e&&i<5;e=e.parentElement,i++){const t=N(e.textContent);if(SL.test(t))return true;if(/\s/.test(t))break}return false}
 function Q(n){const e=n.nodeType===1?n:n.parentElement;return !!(e&&e.closest(P))}
 function H(n){return Q(n)||!!(n&&n.nodeType===1&&n.querySelector(P))}
 function T(){try{const b=document.body||document.documentElement;if(!b)return;const w=document.createTreeWalker(b,NodeFilter.SHOW_TEXT,{acceptNode(n){const p=n.parentElement;if(!p||X.has(p.tagName)||p.closest('[contenteditable],'+C)||Q(n)||K(n)||!R(n.nodeValue,p))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});let n;while(n=w.nextNode()){const v=R(n.nodeValue,n.parentElement);if(v)n.nodeValue=v}document.querySelectorAll("[role=dialog] p,[role=dialog] div,[role=dialog] span").forEach(e=>{try{if(e.closest("button,[contenteditable],"+C)||H(e)||K(e)||e.children.length)return;const t=R(e.textContent,e);if(t&&N(e.textContent)!==N(t))e.textContent=t}catch{}});document.querySelectorAll("[aria-label],[title],[placeholder],input,textarea").forEach(e=>{["aria-label","title","placeholder","value"].forEach(a=>{try{if(e.closest(C)||Q(e)||K(e))return;if(a==="value"&&!(e.matches("input[type=button],input[type=submit]")))return;let v=e.getAttribute?e.getAttribute(a):void 0;if(v==null&&a in e)v=e[a];const t=R(v,e,true);if(t){if(e.setAttribute)e.setAttribute(a,t);try{if(a in e)e[a]=t}catch{}}}catch{}})});document.querySelectorAll("a").forEach(e=>{try{if(H(e))return;const r=e.getBoundingClientRect(),txt=N(e.textContent);if(txt==="Claude"&&r.left<100&&r.top<100)e.style.visibility="hidden"}catch{}})}catch{}}
 T();
-new MutationObserver(()=>{clearTimeout(window.__claudeZhDomTimer);window.__claudeZhDomTimer=setTimeout(T,30)}).observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true});
+const S=()=>{window.__claudeZhDomDue=0;T()};
+new MutationObserver(()=>{const now=Date.now();if(!window.__claudeZhDomDue)window.__claudeZhDomDue=now+250;clearTimeout(window.__claudeZhDomTimer);window.__claudeZhDomTimer=setTimeout(S,Math.max(0,Math.min(30,window.__claudeZhDomDue-now)))}).observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true});
 }catch(e){}})()
 '@
     return $template.Replace("__LANGUAGE__", $languageJson).Replace("__MAPPING__", $mappingJson).Replace("__UI_MAPPING__", $uiMappingJson).Replace("__SELECTED_TEXT__", $selectedTextJson).Replace("__DELETE_SELECTED_TEXT__", $deleteSelectedTextJson).Replace("__UPDATED_MINUTE_TEXT__", $updatedMinuteTextJson).Replace("__UPDATED_HOUR_TEXT__", $updatedHourTextJson).Replace("__UPDATED_DAY_TEXT__", $updatedDayTextJson).Replace("__UPDATED_WEEK_TEXT__", $updatedWeekTextJson).Replace("__UPDATED_MONTH_TEXT__", $updatedMonthTextJson).Replace("__UPDATED_YEAR_TEXT__", $updatedYearTextJson).Replace("__AGO_SECOND__", $agoSecondTextJson).Replace("__AGO_MINUTE__", $agoMinuteTextJson).Replace("__AGO_HOUR__", $agoHourTextJson).Replace("__AGO_DAY__", $agoDayTextJson).Replace("__AGO_WEEK__", $agoWeekTextJson).Replace("__ADDED_MINUTE__", $addedMinuteTextJson).Replace("__ADDED_HOUR__", $addedHourTextJson).Replace("__ADDED_DAY__", $addedDayTextJson).Replace("__ADDED_WEEK__", $addedWeekTextJson).Replace("__ADDED_MONTH__", $addedMonthTextJson).Replace("__ADDED_YEAR__", $addedYearTextJson).Replace("__ADDED_MONTH_RULES__", $addedMonthRulesJson)

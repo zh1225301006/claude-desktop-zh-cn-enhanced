@@ -567,6 +567,12 @@ def build_online_translation_map(app: Path, lang_code: str) -> dict[str, str]:
         if is_online_dom_translation_entry(source, target):
             mapping[source] = target
 
+    overrides_path = RESOURCES / f"online-dom-{lang_code}.json"
+    if overrides_path.exists():
+        for source, target in load_json(overrides_path).get("global", []):
+            if is_online_dom_translation_entry(source, target):
+                mapping[source] = target
+
     return dict(sorted(mapping.items()))
 
 
@@ -695,7 +701,7 @@ def build_online_dom_translation_script(lang_code: str, mapping: dict[str, str])
         f'{dynamic_rules}];'
         'const R=s=>{const n=N(s);if(M[n])return M[n];for(const [r,t] of G){const m=n.match(r);'
         'if(m)return t.replace("$1",m[1])}};'
-        'const X=new Set(["SCRIPT","STYLE","NOSCRIPT"]),C="pre,code,kbd,samp,var,[data-language],[data-testid*=code],.cm-editor,.monaco-editor,.hljs",P=\'[data-testid="user-message"],.standard-markdown,.progressive-markdown,[data-testid="chat-input"],[data-testid="conway-composer-input"],[data-testid="conway-user-message"] .user-bubble,[data-testid="conway-output-cell"]\';'
+        'const X=new Set(["SCRIPT","STYLE","NOSCRIPT"]),C="pre,code,kbd,samp,var,[data-language],[data-testid*=code-block],[data-testid*=codeblock],.cm-editor,.monaco-editor,.hljs",P=\'[data-testid="user-message"],.standard-markdown,.progressive-markdown,[data-testid="chat-input"],[data-testid="conway-composer-input"],[data-testid="conway-user-message"] .user-bubble,[data-testid="conway-output-cell"]\';'
         'const SL=/^\\/?[a-z][a-z0-9_]*(?:-[a-z0-9_]+)+(?:\\s*(?:Custom command|Slash command))?$/i;'
         # Stop climbing once an ancestor's text has whitespace it did not match on: an
         # ancestor's text only grows as we climb, so once it carries surrounding prose no

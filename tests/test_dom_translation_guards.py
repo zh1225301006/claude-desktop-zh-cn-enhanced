@@ -382,7 +382,8 @@ class DomTranslationGuardTests(unittest.TestCase):
         )
 
         self.assertIn("pre,code,kbd,samp,var", script)
-        self.assertIn("[data-testid*=code]", script)
+        self.assertIn("[data-testid*=code-block]", script)
+        self.assertNotIn("[data-testid*=code]", script)
         self.assertIn(".cm-editor,.monaco-editor,.hljs", script)
         self.assertIn("Custom command|Slash command", script)
 

@@ -6,7 +6,9 @@
 
 本仓库基于 [javaht/claude-desktop-zh-cn](https://github.com/javaht/claude-desktop-zh-cn)，针对 Windows Claude Desktop 2.7032.0.0 增强简体中文覆盖：补齐动态文案安装路径、补充在线界面词表，并保留嵌套界面结构及聊天内容。简体中文资源另参考 [ICERainbow666/claude-desktop-zh-cn](https://github.com/ICERainbow666/claude-desktop-zh-cn)。其余平台功能沿用上游，不表示已在本增强版中重新验证。
 
-发布检查：25 项自动化测试通过，JSON、PowerShell 和生成的 JavaScript 语法检查通过；未进行客户端界面测试。安装器的版本提示目前仍跟踪上游 Releases，不会自动下载或覆盖本增强版。
+2026-09-26 修订：补齐设置子页面的 337 个资源项，覆盖常规、账号、隐私、用量、功能、记忆、设计系统、Claude Code 和浏览器权限等页面；同时补充首页统计、权限菜单及动态文案。字体、模型、产品名称和代码示例保留原文。
+
+发布检查：29 项自动化测试通过，检查翻译资源 ID、变量与链接格式、在线词表加载以及聊天和代码保护。Windows 官方账号模式补充在线设置页翻译；修正旧补丁把整个 Claude Code 设置页当成代码区域而跳过的问题，并避免频繁页面更新导致翻译一直等待。完整汉化可能影响 Cowork，不适合依赖该功能的用户。安装器的版本提示目前仍跟踪上游 Releases，不会自动下载或覆盖本增强版。
 
 macOS 双击 `install-mac.command`；Windows 双击 `install-windows.bat` 后按 UAC 提示授权；Linux（deb 包安装）在终端运行 `./install-linux.sh`。脚本会给 Claude Desktop 添加中文语言选项并安装中文界面资源。
 
