@@ -22,6 +22,9 @@ jobs:
       - name: Run shortcut repair tests
         run: python3 -m unittest -v tests.test_shortcut_repair
 
+      - name: Run settings translation tests
+        run: python3 -m unittest discover -v -s tests -p test_settings_translation.py
+
       - name: Compile patcher and tests
         run: python3 -m py_compile scripts/patch_claude_zh_cn.py tests/test_dom_translation_guards.py tests/test_shortcut_repair.py
 
@@ -53,3 +56,12 @@ jobs:
               json.loads(raw)
           print("All resource JSON files are valid with no duplicate keys.")
           PY
+
+  windows-settings-refresh:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check remote settings, usage values, and installed patch refresh
+        run: python -m unittest discover -v -s tests -p test_remote_usage_settings.py

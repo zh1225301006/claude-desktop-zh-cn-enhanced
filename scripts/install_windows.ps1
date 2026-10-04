@@ -1668,6 +1668,11 @@ const G=[
 [/^added (\d+) years? ago$/,ADDY],
 __ADDED_MONTH_RULES__,
 [/^Show all (\d+)$/,"显示全部 $1 项"],
+[/^Folders\s*\((\d+)\)$/,"文件夹（$1）"],
+[/^(\d+) of (\d+) listed$/,"已列出 $1/$2 个"],
+[/^Claude lists the (\d+) folders you use Claude Code in most, and updates the list as that changes\. Pin a folder to always list it; remove one to never list it\.$/,"Claude 会列出你最常使用 Claude Code 的 $1 个文件夹，并随使用情况更新列表。固定文件夹可让它始终显示；移除后则不再显示。"],
+[/^([$€£¥][\d,.]+) of ([$€£¥][\d,.]+) left$/,"剩余 $1（共 $2）"],
+[/^Expires (\d{1,2}):(\d{2}) (AM|PM) (GMT[+-]\d{1,2}(?::\d{2})?), (January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2})(?:, (\d{4}))?$/, (hour,minute,period,zone,month,day,year)=>"到期时间："+(year?year+"年":"")+({January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12,Jan:1,Feb:2,Mar:3,Apr:4,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12}[month])+"月"+day+"日 "+((Number(hour)%12)+(period==="PM"?12:0))+":"+minute+"（"+zone+"）"],
 [/^What[’']s up next, (.+)\?$/,"$1，接下来做什么？"],
 [/^Fresh week\. ([\d.]+)% of your weekly limit used\.$/,"新的一周，本周额度已使用 $1%。"],
 [/^([\d.]+)% used$/,"已使用 $1%"],
@@ -1703,7 +1708,7 @@ function Remove-ExistingOnlineDomTranslationPatch {
     }
 
     Write-Host "  [进度] 检测到旧版在线 DOM 补丁标记，正在快速定位旧注入..." -ForegroundColor DarkGray
-    $eventPattern = [System.Text.RegularExpressions.Regex]::new('\.webContents\.on\((?<quote>["''`])dom-ready\k<quote>,\(\)=>\{')
+    $eventPattern = [System.Text.RegularExpressions.Regex]::new('\.webContents\.on\((?<quote>["''`])dom-ready\k<quote>,(?<outer>\()?\(\)=>\{')
     $eventMatches = $eventPattern.Matches($Text.Substring(0, $markerIndex))
     if ($eventMatches.Count -eq 0) {
         Write-Host "  [警告] 找到旧补丁标记，但无法定位 dom-ready 注入起点；将保留原内容继续。" -ForegroundColor DarkYellow
@@ -1732,15 +1737,18 @@ function Remove-ExistingOnlineDomTranslationPatch {
     $bodyStart = $anchorIndex + $eventMatch.Length
     $executeNeedle = ";" + $receiver + ".webContents.executeJavaScript("
     $executeIndex = $Text.LastIndexOf($executeNeedle, $markerIndex, [System.StringComparison]::Ordinal)
-    $handlerEnding = if ($markerIndex -ge 3) { $Text.Substring($markerIndex - 3, 3) } else { "" }
-    if (($executeIndex -lt $bodyStart) -or (($handlerEnding -ne "});") -and ($handlerEnding -ne "}),"))) {
+    $endingLength = if ($eventMatch.Groups["outer"].Success) { 4 } else { 3 }
+    $expectedClose = if ($eventMatch.Groups["outer"].Success) { '}))' } else { '})' }
+    $handlerEnding = if ($markerIndex -ge $endingLength) { $Text.Substring($markerIndex - $endingLength, $endingLength) } else { "" }
+    if (($executeIndex -lt $bodyStart) -or (($handlerEnding -ne ($expectedClose + ';')) -and ($handlerEnding -ne ($expectedClose + ',')))) {
         Write-Host "  [警告] 找到旧补丁标记，但旧注入结构不符合预期；将保留原内容继续。" -ForegroundColor DarkYellow
         return @{ Text = $Text; Removed = $false }
     }
 
     $body = $Text.Substring($bodyStart, $executeIndex - $bodyStart)
-    $terminator = $handlerEnding.Substring(2, 1)
-    $replacement = $receiver + ".webContents.on(" + $eventQuote + "dom-ready" + $eventQuote + ",()=>{" + $body + '})' + $terminator
+    $terminator = $handlerEnding.Substring($endingLength - 1, 1)
+    $callbackOpen = if ($eventMatch.Groups["outer"].Success) { '(()=>{' } else { '()=>{' }
+    $replacement = $receiver + ".webContents.on(" + $eventQuote + "dom-ready" + $eventQuote + "," + $callbackOpen + $body + $expectedClose + $terminator
     $patchedEnd = $markerIndex + $markerComment.Length
     $patchedText = $Text.Substring(0, $receiverStart) + $replacement + $Text.Substring($patchedEnd)
     return @{ Text = $patchedText; Removed = $true }
@@ -1784,7 +1792,7 @@ function Find-OnlineDomTranslationHook {
             $ch = $Text[$i]
             if ($quote) {
                 if ($escaped) { $escaped = $false; continue }
-                if ($ch -eq '\\') { $escaped = $true; continue }
+                if ($ch -eq '\') { $escaped = $true; continue }
                 if ($ch -eq $quote) { $quote = $null }
                 continue
             }

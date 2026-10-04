@@ -4,11 +4,13 @@
 
 > 本增强版的简体中文资源合并了其他社区译文。代码保留原项目 MIT 许可；部分简体中文译文按 CC BY-NC-SA 4.0 分享。来源、改动及许可范围见 [TRANSLATION_LICENSE.md](TRANSLATION_LICENSE.md)，本地增强内容见 [LOCAL_CHANGES.md](LOCAL_CHANGES.md)。
 
-本仓库基于 [javaht/claude-desktop-zh-cn](https://github.com/javaht/claude-desktop-zh-cn)，针对 Windows Claude Desktop 2.7032.0.0 增强简体中文覆盖：补齐动态文案安装路径、补充在线界面词表，并保留嵌套界面结构及聊天内容。简体中文资源另参考 [ICERainbow666/claude-desktop-zh-cn](https://github.com/ICERainbow666/claude-desktop-zh-cn)。其余平台功能沿用上游，不表示已在本增强版中重新验证。
+本仓库基于 [javaht/claude-desktop-zh-cn](https://github.com/javaht/claude-desktop-zh-cn)，增强 Windows Claude Desktop 的简体中文覆盖：补齐动态文案安装路径、补充在线界面词表，并保留嵌套界面结构及聊天内容。2026-10-04 修订已在 Windows Claude Desktop 2.16120.0.0 验证；早期修订适配 2.7032.0.0。简体中文资源另参考 [ICERainbow666/claude-desktop-zh-cn](https://github.com/ICERainbow666/claude-desktop-zh-cn)。其余平台功能沿用上游，不表示已在本增强版中重新验证。
 
 2026-09-26 修订：补齐设置子页面的 337 个资源项，覆盖常规、账号、隐私、用量、功能、记忆、设计系统、Claude Code 和浏览器权限等页面；同时补充首页统计、权限菜单及动态文案。字体、模型、产品名称和代码示例保留原文。
 
-发布检查：29 项自动化测试通过，检查翻译资源 ID、变量与链接格式、在线词表加载以及聊天和代码保护。Windows 官方账号模式补充在线设置页翻译；修正旧补丁把整个 Claude Code 设置页当成代码区域而跳过的问题，并避免频繁页面更新导致翻译一直等待。完整汉化可能影响 Cowork，不适合依赖该功能的用户。安装器的版本提示目前仍跟踪上游 Releases，不会自动下载或覆盖本增强版。
+2026-10-04 修订：适配新版 Windows 客户端，恢复在线界面翻译与语言锁定；修正刷新已安装补丁时对回调括号和转义字符的识别。补齐 Claude Code 的远程控制、文件夹列表，以及用量页的额度重置机会、云端会话额度、剩余额度和到期时间。
+
+发布检查：31 项自动化测试通过，检查翻译资源 ID、变量与链接格式、在线词表加载、聊天和代码保护，以及旧补丁刷新和动态日期/金额。本机安装后，用户确认首页和设置恢复中文，并确认远程控制及用量页补充翻译。Windows 官方账号模式补充在线设置页翻译；修正旧补丁把整个 Claude Code 设置页当成代码区域而跳过的问题，并避免频繁页面更新导致翻译一直等待。完整汉化可能影响 Cowork，不适合依赖该功能的用户。安装器的版本提示跟踪本增强版 Releases，只提示新版，不会自动下载或安装。
 
 macOS 双击 `install-mac.command`；Windows 双击 `install-windows.bat` 后按 UAC 提示授权；Linux（deb 包安装）在终端运行 `./install-linux.sh`。脚本会给 Claude Desktop 添加中文语言选项并安装中文界面资源。
 

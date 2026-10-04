@@ -1,6 +1,54 @@
 {
   "global": [
     [
+      "Use this computer from your phone and claude.ai",
+      "从手机和 claude.ai 使用此电脑"
+    ],
+    [
+      "While Claude is open, sessions on your other devices can start here and can read and edit files and run commands in the folders below, following your approval settings. This computer’s name and each folder’s name, path, Git branch, and repository URL are sent to Anthropic so your devices can list them.",
+      "Claude 开启时，你可以从其他设备在此电脑上启动会话，并按照你的审批设置，在下方文件夹中读取和编辑文件、运行命令。此电脑的名称以及各文件夹的名称、路径、Git 分支和仓库 URL 会发送给 Anthropic，以便你的设备显示它们。"
+    ],
+    [
+      "Keep this computer awake for Remote Control",
+      "保持此电脑唤醒以便远程控制"
+    ],
+    [
+      "Keeps this computer from going to sleep on its own. If it does go to sleep, it isn’t reachable until it wakes up.",
+      "防止此电脑自动进入睡眠。如果电脑进入睡眠，唤醒前将无法远程连接。"
+    ],
+    [
+      "Claude lists the 6 folders you use Claude Code in most, and updates the list as that changes. Pin a folder to always list it; remove one to never list it.",
+      "Claude 会列出你最常使用 Claude Code 的 6 个文件夹，并随使用情况更新列表。固定文件夹可让它始终显示；移除后则不再显示。"
+    ],
+    [
+      "Show folders",
+      "显示文件夹"
+    ],
+    [
+      "Hide folders",
+      "隐藏文件夹"
+    ],
+    [
+      "Limit resets",
+      "额度重置机会"
+    ],
+    [
+      "No resets right now",
+      "当前没有可用的重置机会"
+    ],
+    [
+      "When you get one, it shows up here with its expiry date.",
+      "获得重置机会后，会在此处显示及标注到期日期。"
+    ],
+    [
+      "Cloud session credits",
+      "云端会话额度"
+    ],
+    [
+      "Applies automatically to cloud sessions. After it’s used or expires, your plan’s regular usage applies.",
+      "自动用于云端会话。额度用完或到期后，将使用你的套餐常规额度。"
+    ],
+    [
       "Use incognito",
       "使用无痕模式"
     ],
@@ -642,6 +690,10 @@
     ]
   ],
   "uiOnly": [
+    [
+      "Folders",
+      "文件夹"
+    ],
     [
       "New",
       "新建"
